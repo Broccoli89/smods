@@ -1,0 +1,16 @@
+{
+  "reddit": {
+    "username": "YOUR_REDDIT_USERNAME",
+    "password": "YOUR_REDDIT_PASSWORD"
+  },
+  "drive_folder": "C:/Users/YourName/Google Drive/reddit_media",
+  "ollama_model": "llama3",
+  "subreddits": [
+    {"name": "funny", "category": "humor and memes"},
+    {"name": "aww", "category": "cute animals and pets"},
+    {"name": "gaming", "category": "video games and gaming culture"},
+    {"name": "pics", "category": "interesting and beautiful photography"},
+    {"name": "videos", "category": "entertaining and interesting videos"}
+  ],
+  "post_delay_seconds": 5
+}
