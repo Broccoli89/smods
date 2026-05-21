@@ -1,0 +1,32 @@
+{
+  "r/dresses": {
+    "tone": "casual, fashion-enthusiastic, first-person sharing",
+    "example_title": "Finally found the perfect summer dress and I'm obsessed",
+    "cluster": "dresses"
+  },
+  "r/femalefashionadvice": {
+    "tone": "seeking opinions, conversational, style-curious",
+    "example_title": "Would this floral midi work for a daytime wedding?",
+    "cluster": "dresses"
+  },
+  "r/frugalfemalefashion": {
+    "tone": "budget-conscious, excited about a find, deal-focused",
+    "example_title": "Grabbed this for $18 and couldn't be happier with it",
+    "cluster": "dresses"
+  },
+  "r/streetwear": {
+    "tone": "confident, hype-aware, style-forward",
+    "example_title": "Today's fit — kept it simple",
+    "cluster": null
+  },
+  "r/Sneakers": {
+    "tone": "enthusiast, collector energy, detail-appreciating",
+    "example_title": "Finally copped these after waiting six months",
+    "cluster": "sneakers"
+  },
+  "r/Sneaker": {
+    "tone": "enthusiast, hype-adjacent, excited",
+    "example_title": "Just arrived — the colorway is even better in person",
+    "cluster": "sneakers"
+  }
+}

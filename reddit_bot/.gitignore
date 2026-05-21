@@ -1,0 +1,9 @@
+# Account credentials — never commit real .env files
+accounts/*.env
+!accounts/example.env
+
+# Runtime artifacts
+logs/
+__pycache__/
+*.py[cod]
+.env
