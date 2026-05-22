@@ -99,19 +99,11 @@ def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
         }""")
         print("Form elements found:", inputs)
 
-        # Fill title
+        # Fill title - it's a contenteditable div, must click then type
         print("Filling title...")
-        filled = False
-        for selector in ['[placeholder="Title*"]', 'textarea[placeholder*="Title"]', 'input[placeholder*="Title"]', '[aria-label="Title"]', 'div[contenteditable="true"]', '[data-testid="post-title-input"]']:
-            try:
-                page.fill(selector, title, timeout=3000)
-                filled = True
-                print(f"Title filled with selector: {selector}")
-                break
-            except Exception:
-                continue
-        if not filled:
-            print("WARNING: Could not fill title")
+        page.click('div[contenteditable="true"]', timeout=5000)
+        page.keyboard.type(title)
+        print("Title typed")
         time.sleep(2)
         page.screenshot(path="/tmp/step3_after_title.png")
         print("Screenshot saved: step3_after_title.png")
