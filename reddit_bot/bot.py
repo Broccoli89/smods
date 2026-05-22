@@ -5,7 +5,7 @@ import time
 import requests
 from pathlib import Path
 from playwright.sync_api import sync_playwright
-from playwright_stealth import stealth_sync
+from playwright_stealth import stealth
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".mp4", ".mov", ".webm"}
 
@@ -49,7 +49,7 @@ def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
             viewport={"width": 1280, "height": 800},
         )
         page = context.new_page()
-        stealth_sync(page)
+        stealth(page)
 
         # Login
         page.goto("https://www.reddit.com/login")
