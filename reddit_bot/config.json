@@ -7,6 +7,11 @@
     "Angie": {
       "username": "ANGIE_REDDIT_USERNAME",
       "password": "ANGIE_REDDIT_PASSWORD"
+    },
+    "Test": {
+      "username": "Strong-Character1268",
+      "password": "1Shenron20!",
+      "post_to_profile": true
     }
   },
   "drive_folder": "/home/broccoli/GoogleDrive/Reddit Bot",

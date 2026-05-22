@@ -60,7 +60,7 @@ def post_to_reddit(account: dict, media_path: Path, title: str, subreddit_name: 
         page.locator('button[type="submit"], button:has-text("Log In"), button:has-text("Login")').first.click()
         time.sleep(5)
 
-        page.goto(f"https://www.reddit.com/r/{subreddit_name}/submit?type=IMAGE")
+        page.goto(f"https://www.reddit.com/r/{subreddit_name}/submit?type=IMAGE" if subreddit_name else f"https://www.reddit.com/user/{account['username']}/submit?type=IMAGE")
         page.wait_for_load_state("domcontentloaded")
         time.sleep(4)
 
@@ -113,20 +113,31 @@ def process_upload(config: dict, media_path: Path, person: str, category: str):
     print(f"Posting to {len(subreddits)} subreddits")
     print(f"{'='*50}")
 
-    for i, subreddit in enumerate(subreddits):
-        print(f"\n[{i+1}/{len(subreddits)}] Generating title for r/{subreddit['name']}...")
+    if account.get("post_to_profile"):
+        print(f"[TEST MODE] Posting to u/{account['username']} profile")
+        theme_sub = {"name": account["username"], "theme": category.replace("_", " ")}
         try:
-            title = generate_title(media_path, subreddit, config["ollama_model"])
+            title = generate_title(media_path, theme_sub, config["ollama_model"])
             print(f"Title: {title}")
-            url = post_to_reddit(account, media_path, title, subreddit["name"])
+            url = post_to_reddit(account, media_path, title, None)
             print(f"Posted: {url}")
         except Exception as e:
-            print(f"Failed to post to r/{subreddit['name']}: {e}")
+            print(f"Failed to post to profile: {e}")
+    else:
+        for i, subreddit in enumerate(subreddits):
+            print(f"\n[{i+1}/{len(subreddits)}] Generating title for r/{subreddit['name']}...")
+            try:
+                title = generate_title(media_path, subreddit, config["ollama_model"])
+                print(f"Title: {title}")
+                url = post_to_reddit(account, media_path, title, subreddit["name"])
+                print(f"Posted: {url}")
+            except Exception as e:
+                print(f"Failed to post to r/{subreddit['name']}: {e}")
 
-        if i < len(subreddits) - 1:
-            mins = config.get("post_delay_minutes", 10)
-            print(f"Waiting {mins} minutes before next post...")
-            time.sleep(mins * 60)
+            if i < len(subreddits) - 1:
+                mins = config.get("post_delay_minutes", 10)
+                print(f"Waiting {mins} minutes before next post...")
+                time.sleep(mins * 60)
 
     archive_dir = media_path.parent.parent / f"{category}_archive"
     archive_dir.mkdir(exist_ok=True)
