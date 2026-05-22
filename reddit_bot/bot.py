@@ -42,7 +42,7 @@ def generate_title(image_path: Path, subreddit: dict, model: str) -> str:
     return response.json()["response"].strip().strip('"')
 
 
-def post_to_reddit(config: dict, media_path: Path, title: str, subreddit_name: str):
+def post_to_reddit(account: dict, media_path: Path, title: str, subreddit_name: str):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
         context = browser.new_context(
@@ -55,8 +55,8 @@ def post_to_reddit(config: dict, media_path: Path, title: str, subreddit_name: s
         page.goto("https://www.reddit.com/login")
         page.wait_for_load_state("domcontentloaded")
         time.sleep(3)
-        page.locator('input[name="username"], input[id="login-username"], input[autocomplete="username"]').first.fill(config["reddit"]["username"])
-        page.locator('input[name="password"], input[id="login-password"], input[type="password"]').first.fill(config["reddit"]["password"])
+        page.locator('input[name="username"], input[id="login-username"], input[autocomplete="username"]').first.fill(account["username"])
+        page.locator('input[name="password"], input[id="login-password"], input[type="password"]').first.fill(account["password"])
         page.locator('button[type="submit"], button:has-text("Log In"), button:has-text("Login")').first.click()
         time.sleep(5)
 
@@ -91,6 +91,12 @@ def post_to_reddit(config: dict, media_path: Path, title: str, subreddit_name: s
 
 
 def process_upload(config: dict, media_path: Path, person: str, category: str):
+    people = config.get("people", {})
+    if person not in people:
+        print(f"No account configured for '{person}' — skipping. Add them to config.json.")
+        return
+
+    account = people[person]
     categories = config["categories"]
     if category not in categories:
         print(f"Unknown category '{category}' — skipping. Add it to config.json to enable.")
@@ -103,6 +109,7 @@ def process_upload(config: dict, media_path: Path, person: str, category: str):
 
     print(f"\n{'='*50}")
     print(f"Processing: {person}/{category}/{media_path.name}")
+    print(f"Account: u/{account['username']}")
     print(f"Posting to {len(subreddits)} subreddits")
     print(f"{'='*50}")
 
@@ -111,7 +118,7 @@ def process_upload(config: dict, media_path: Path, person: str, category: str):
         try:
             title = generate_title(media_path, subreddit, config["ollama_model"])
             print(f"Title: {title}")
-            url = post_to_reddit(config, media_path, title, subreddit["name"])
+            url = post_to_reddit(account, media_path, title, subreddit["name"])
             print(f"Posted: {url}")
         except Exception as e:
             print(f"Failed to post to r/{subreddit['name']}: {e}")

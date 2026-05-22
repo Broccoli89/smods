@@ -1,7 +1,13 @@
 {
-  "reddit": {
-    "username": "YOUR_REDDIT_USERNAME",
-    "password": "YOUR_REDDIT_PASSWORD"
+  "people": {
+    "Billy": {
+      "username": "BILLY_REDDIT_USERNAME",
+      "password": "BILLY_REDDIT_PASSWORD"
+    },
+    "Angie": {
+      "username": "ANGIE_REDDIT_USERNAME",
+      "password": "ANGIE_REDDIT_PASSWORD"
+    }
   },
   "drive_folder": "/home/broccoli/GoogleDrive/Reddit Bot",
   "ollama_model": "llava",
