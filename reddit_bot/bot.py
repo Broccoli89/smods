@@ -113,12 +113,12 @@ def process_upload(config: dict, media_path: Path, person: str, category: str):
     print(f"Account: u/{account['username']}")
     print(f"{'='*50}")
 
+    title = media_path.stem
+    print(f"Title: {title}")
+
     if account.get("post_to_profile"):
         print(f"[TEST MODE] Posting to u/{account['username']} profile")
-        theme_sub = {"name": account["username"], "theme": category.replace("_", " ")}
         try:
-            title = generate_title(media_path, theme_sub, config["ollama_model"])
-            print(f"Title: {title}")
             url = post_to_reddit(account, media_path, title, None)
             print(f"Posted: {url}")
         except Exception as e:
@@ -128,10 +128,8 @@ def process_upload(config: dict, media_path: Path, person: str, category: str):
             print(f"No subreddits configured for '{category}' — skipping.")
             return
         for i, subreddit in enumerate(subreddits):
-            print(f"\n[{i+1}/{len(subreddits)}] Generating title for r/{subreddit['name']}...")
+            print(f"\n[{i+1}/{len(subreddits)}] Posting to r/{subreddit['name']}...")
             try:
-                title = generate_title(media_path, subreddit, config["ollama_model"])
-                print(f"Title: {title}")
                 url = post_to_reddit(account, media_path, title, subreddit["name"])
                 print(f"Posted: {url}")
             except Exception as e:
