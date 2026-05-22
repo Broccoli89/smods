@@ -2,7 +2,6 @@ import base64
 import io
 import json
 import queue
-import shutil
 import threading
 import time
 from pathlib import Path
