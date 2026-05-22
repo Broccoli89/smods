@@ -29,9 +29,11 @@ def get_media_file(folder: str) -> Path:
 
 def generate_title(category: str, model: str, image_path: Path) -> str:
     prompt = (
-        f"Look at this image and write a short, catchy Reddit post title for a {category} subreddit. "
-        "Make it natural, engaging, and relevant to what you see. "
-        "Return only the title, no quotes or explanation."
+        f"You are writing a Reddit post title for the {category} subreddit. "
+        "Look at this image and write a title that fits Reddit's casual, witty style. "
+        "Rules: no emojis, no hashtags, no Instagram-style captions, no ALL CAPS. "
+        "Keep it under 15 words. Make it feel like something a real Reddit user would post. "
+        "Return only the title, nothing else."
     )
     payload = {"model": model, "prompt": prompt, "stream": False}
     if image_path.suffix.lower() in {".jpg", ".jpeg", ".png", ".gif"}:
