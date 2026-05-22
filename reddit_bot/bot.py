@@ -40,7 +40,7 @@ def generate_title(category: str, model: str, image_path: Path) -> str:
     response = requests.post(
         "http://localhost:11434/api/generate",
         json=payload,
-        timeout=60,
+        timeout=300,
     )
     response.raise_for_status()
     return response.json()["response"].strip().strip('"')
