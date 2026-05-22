@@ -5,6 +5,7 @@
   },
   "drive_folder": "C:/Users/YourName/Google Drive/reddit_media",
   "ollama_model": "llava",
+  "profile_only": true,
   "subreddits": [
     {"name": "aww", "category": "cute animals and pets"},
     {"name": "Pets", "category": "cute animals and pets"}

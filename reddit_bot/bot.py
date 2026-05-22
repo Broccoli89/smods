@@ -70,7 +70,11 @@ def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
         time.sleep(5)
 
         # Go to submit page
-        page.goto(f"https://www.reddit.com/r/{subreddit['name']}/submit?type=IMAGE")
+        if config.get("profile_only"):
+            submit_url = f"https://www.reddit.com/user/{config['reddit']['username']}/submit?type=IMAGE"
+        else:
+            submit_url = f"https://www.reddit.com/r/{subreddit['name']}/submit?type=IMAGE"
+        page.goto(submit_url)
         page.wait_for_load_state("domcontentloaded")
         time.sleep(4)
         page.screenshot(path="/tmp/step1_submit_page.png")
