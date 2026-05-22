@@ -5,6 +5,7 @@ import time
 import requests
 from pathlib import Path
 from playwright.sync_api import sync_playwright
+from playwright_stealth import stealth_sync
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".mp4", ".mov", ".webm"}
 
@@ -43,8 +44,12 @@ def generate_title(category: str, model: str) -> str:
 def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
-        context = browser.new_context()
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            viewport={"width": 1280, "height": 800},
+        )
         page = context.new_page()
+        stealth_sync(page)
 
         # Login
         page.goto("https://www.reddit.com/login")
@@ -55,8 +60,7 @@ def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
         password_input = page.locator('input[name="password"], input[id="login-password"], input[type="password"]').first
         password_input.fill(config["reddit"]["password"])
         page.locator('button[type="submit"], button:has-text("Log In"), button:has-text("Login")').first.click()
-        page.wait_for_url("https://www.reddit.com/", timeout=15000)
-        time.sleep(2)
+        time.sleep(5)
 
         # Go to submit page
         page.goto(f"https://www.reddit.com/r/{subreddit['name']}/submit")
