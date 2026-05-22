@@ -48,35 +48,59 @@ def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
 
         # Login
         page.goto("https://www.reddit.com/login")
-        page.wait_for_load_state("networkidle")
-        page.fill('input[name="username"]', config["reddit"]["username"])
-        page.fill('input[name="password"]', config["reddit"]["password"])
-        page.click('button[type="submit"]')
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("domcontentloaded")
         time.sleep(2)
+        page.fill('input[id="login-username"]', config["reddit"]["username"])
+        page.fill('input[id="login-password"]', config["reddit"]["password"])
+        page.get_by_role("button", name="Log In").click()
+        page.wait_for_load_state("networkidle")
+        time.sleep(3)
 
         # Go to submit page
         page.goto(f"https://www.reddit.com/r/{subreddit['name']}/submit")
         page.wait_for_load_state("networkidle")
-        time.sleep(2)
-
-        # Click image/video tab
-        try:
-            page.click('button:has-text("Images & Video")', timeout=5000)
-        except Exception:
-            page.click('[role="tab"]:has-text("Image")', timeout=5000)
-        time.sleep(1)
-
-        # Upload file
-        file_input = page.locator('input[type="file"]').first
-        file_input.set_input_files(str(media_path))
         time.sleep(3)
 
+        # Click image/video tab
+        for selector in [
+            'a[href*="submit?type=IMAGE"]',
+            'button:has-text("Images & Video")',
+            '[role="tab"]:has-text("Image")',
+            '[data-testid="image-and-video-tab"]',
+        ]:
+            try:
+                page.click(selector, timeout=3000)
+                break
+            except Exception:
+                continue
+        time.sleep(2)
+
+        # Upload file via file chooser
+        try:
+            with page.expect_file_chooser(timeout=5000) as fc_info:
+                page.click('button:has-text("Upload")', timeout=5000)
+            fc_info.value.set_files(str(media_path))
+        except Exception:
+            file_input = page.locator('input[type="file"]').first
+            file_input.set_input_files(str(media_path))
+        time.sleep(5)
+
         # Fill title
-        page.fill('textarea[placeholder*="Title"]', title)
+        for selector in ['textarea[placeholder*="Title"]', 'input[placeholder*="Title"]', '[data-testid="post-title-input"]']:
+            try:
+                page.fill(selector, title, timeout=3000)
+                break
+            except Exception:
+                continue
+        time.sleep(1)
 
         # Submit
-        page.click('button:has-text("Post")')
+        for selector in ['button:has-text("Post")', 'button:has-text("Submit")', '[data-testid="post-submit-button"]']:
+            try:
+                page.click(selector, timeout=5000)
+                break
+            except Exception:
+                continue
         page.wait_for_load_state("networkidle")
         time.sleep(config.get("post_delay_seconds", 5))
 
