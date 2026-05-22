@@ -139,8 +139,8 @@ def process_upload(config: dict, media_path: Path, person: str, category: str):
                 print(f"Waiting {mins} minutes before next post...")
                 time.sleep(mins * 60)
 
-    archive_dir = media_path.parent.parent / f"{category}_archive"
-    archive_dir.mkdir(exist_ok=True)
+    archive_dir = media_path.parent / "archive" / category
+    archive_dir.mkdir(parents=True, exist_ok=True)
     shutil.move(str(media_path), str(archive_dir / media_path.name))
     print(f"\nArchived to {category}_archive/")
 
