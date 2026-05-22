@@ -9,10 +9,10 @@ from pathlib import Path
 import requests
 from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
-from watchdog.events import FileSystemEventHandler
-from watchdog.observers.polling import PollingObserver as Observer
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".mp4", ".mov", ".webm"}
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+POLL_INTERVAL = 5  # seconds
 
 
 def load_config():
@@ -30,7 +30,7 @@ def generate_title(image_path: Path, subreddit: dict, model: str) -> str:
         "Return only the title, nothing else."
     )
     payload = {"model": model, "prompt": prompt, "stream": False}
-    if image_path.suffix.lower() in {".jpg", ".jpeg", ".png", ".gif"}:
+    if image_path.suffix.lower() in IMAGE_EXTENSIONS:
         with open(image_path, "rb") as f:
             payload["images"] = [base64.b64encode(f.read()).decode()]
     response = requests.post(
@@ -103,14 +103,10 @@ def process_upload(config: dict, media_path: Path, person: str, category: str):
         return
 
     subreddits = categories[category]["subreddits"]
-    if not subreddits:
-        print(f"No subreddits configured for '{category}' — skipping.")
-        return
 
     print(f"\n{'='*50}")
     print(f"Processing: {person}/{category}/{media_path.name}")
     print(f"Account: u/{account['username']}")
-    print(f"Posting to {len(subreddits)} subreddits")
     print(f"{'='*50}")
 
     if account.get("post_to_profile"):
@@ -124,6 +120,9 @@ def process_upload(config: dict, media_path: Path, person: str, category: str):
         except Exception as e:
             print(f"Failed to post to profile: {e}")
     else:
+        if not subreddits:
+            print(f"No subreddits configured for '{category}' — skipping.")
+            return
         for i, subreddit in enumerate(subreddits):
             print(f"\n[{i+1}/{len(subreddits)}] Generating title for r/{subreddit['name']}...")
             try:
@@ -142,34 +141,7 @@ def process_upload(config: dict, media_path: Path, person: str, category: str):
     archive_dir = media_path.parent / "archive" / category
     archive_dir.mkdir(parents=True, exist_ok=True)
     shutil.move(str(media_path), str(archive_dir / media_path.name))
-    print(f"\nArchived to {category}_archive/")
-
-
-class UploadHandler(FileSystemEventHandler):
-    def __init__(self, config: dict, post_queue: queue.Queue):
-        self.config = config
-        self.post_queue = post_queue
-        self.drive_folder = Path(config["drive_folder"])
-
-    def on_created(self, event):
-        if event.is_directory:
-            return
-        path = Path(event.src_path)
-        if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
-            return
-        if "_archive" in str(path):
-            return
-        try:
-            parts = path.relative_to(self.drive_folder).parts
-            if len(parts) < 3:
-                return
-            person, category = parts[0], parts[1]
-        except ValueError:
-            return
-
-        print(f"\nNew file detected: {path.name} ({person}/{category})")
-        time.sleep(3)  # Wait for file to finish copying before reading
-        self.post_queue.put((path, person, category))
+    print(f"\nArchived to {archive_dir}/")
 
 
 def worker(config: dict, post_queue: queue.Queue):
@@ -182,6 +154,27 @@ def worker(config: dict, post_queue: queue.Queue):
         post_queue.task_done()
 
 
+def scan_folder(drive_folder: Path, seen: set) -> list:
+    new_files = []
+    for path in drive_folder.rglob("*"):
+        if path.is_dir():
+            continue
+        if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            continue
+        if "archive" in path.parts:
+            continue
+        if str(path) in seen:
+            continue
+        try:
+            parts = path.relative_to(drive_folder).parts
+            if len(parts) < 3:
+                continue
+            new_files.append(path)
+        except ValueError:
+            continue
+    return new_files
+
+
 def main():
     config = load_config()
     drive_folder = Path(config["drive_folder"])
@@ -189,21 +182,27 @@ def main():
     post_queue = queue.Queue()
     threading.Thread(target=worker, args=(config, post_queue), daemon=True).start()
 
-    handler = UploadHandler(config, post_queue)
-    observer = Observer()
-    observer.schedule(handler, str(drive_folder), recursive=True)
-    observer.start()
+    # Build initial snapshot so existing files are not reprocessed
+    seen = {str(p) for p in drive_folder.rglob("*") if p.is_file()}
 
     print(f"Bot is running. Watching: {drive_folder}")
+    print(f"Polling every {POLL_INTERVAL} seconds.")
     print("Drop images into person/category folders to trigger posting.")
     print("Press Ctrl+C to stop.\n")
 
     try:
         while True:
-            time.sleep(1)
+            time.sleep(POLL_INTERVAL)
+            new_files = scan_folder(drive_folder, seen)
+            for path in new_files:
+                seen.add(str(path))
+                parts = path.relative_to(drive_folder).parts
+                person, category = parts[0], parts[1]
+                print(f"\nNew file detected: {path.name} ({person}/{category})")
+                time.sleep(2)  # let file finish syncing
+                post_queue.put((path, person, category))
     except KeyboardInterrupt:
-        observer.stop()
-    observer.join()
+        print("\nStopped.")
 
 
 if __name__ == "__main__":
