@@ -104,15 +104,11 @@ def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
         }""")
         print("Form elements found:", inputs)
 
-        # Fill title - Lexical editor requires JS focus + execCommand
+        # Fill title - click at visual coordinates of title field then type
         print("Filling title...")
-        page.evaluate(f"""() => {{
-            const el = document.querySelector('[data-lexical-editor="true"]');
-            if (el) {{
-                el.focus();
-                document.execCommand('insertText', false, {json.dumps(title)});
-            }}
-        }}""")
+        page.mouse.click(608, 271)
+        time.sleep(1)
+        page.keyboard.type(title)
         time.sleep(1)
         print("Title typed")
         time.sleep(2)
