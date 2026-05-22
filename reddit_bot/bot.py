@@ -63,52 +63,61 @@ def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
         time.sleep(5)
 
         # Go to submit page
-        page.goto(f"https://www.reddit.com/r/{subreddit['name']}/submit")
+        page.goto(f"https://www.reddit.com/r/{subreddit['name']}/submit?type=IMAGE")
         page.wait_for_load_state("domcontentloaded")
-        time.sleep(3)
-
-        # Click image/video tab
-        for selector in [
-            'a[href*="submit?type=IMAGE"]',
-            'button:has-text("Images & Video")',
-            '[role="tab"]:has-text("Image")',
-            '[data-testid="image-and-video-tab"]',
-        ]:
-            try:
-                page.click(selector, timeout=3000)
-                break
-            except Exception:
-                continue
-        time.sleep(2)
+        time.sleep(4)
+        page.screenshot(path="/tmp/step1_submit_page.png")
+        print("Screenshot saved: step1_submit_page.png")
 
         # Upload file via file chooser
+        print("Attempting file upload...")
         try:
-            with page.expect_file_chooser(timeout=5000) as fc_info:
-                page.click('button:has-text("Upload")', timeout=5000)
+            with page.expect_file_chooser(timeout=8000) as fc_info:
+                page.click('button:has-text("Upload")', timeout=8000)
             fc_info.value.set_files(str(media_path))
-        except Exception:
+            print("File uploaded via chooser")
+        except Exception as e:
+            print(f"File chooser failed ({e}), trying direct input...")
             file_input = page.locator('input[type="file"]').first
             file_input.set_input_files(str(media_path))
+            print("File set via direct input")
         time.sleep(5)
+        page.screenshot(path="/tmp/step2_after_upload.png")
+        print("Screenshot saved: step2_after_upload.png")
 
         # Fill title
-        for selector in ['textarea[placeholder*="Title"]', 'input[placeholder*="Title"]', '[data-testid="post-title-input"]']:
+        print("Filling title...")
+        filled = False
+        for selector in ['textarea[placeholder*="Title"]', 'input[placeholder*="Title"]', '[data-testid="post-title-input"]', 'textarea', 'input[name="title"]']:
             try:
                 page.fill(selector, title, timeout=3000)
+                filled = True
+                print(f"Title filled with selector: {selector}")
                 break
             except Exception:
                 continue
-        time.sleep(1)
+        if not filled:
+            print("WARNING: Could not fill title")
+        time.sleep(2)
+        page.screenshot(path="/tmp/step3_after_title.png")
+        print("Screenshot saved: step3_after_title.png")
 
         # Submit
+        print("Clicking Post button...")
+        clicked = False
         for selector in ['button:has-text("Post")', 'button:has-text("Submit")', '[data-testid="post-submit-button"]']:
             try:
                 page.click(selector, timeout=5000)
+                clicked = True
+                print(f"Post clicked with selector: {selector}")
                 break
             except Exception:
                 continue
-        page.wait_for_load_state("domcontentloaded")
+        if not clicked:
+            print("WARNING: Could not click Post button")
         time.sleep(config.get("post_delay_seconds", 5))
+        page.screenshot(path="/tmp/step4_after_submit.png")
+        print("Screenshot saved: step4_after_submit.png")
 
         current_url = page.url
         browser.close()
