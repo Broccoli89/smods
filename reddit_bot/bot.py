@@ -140,10 +140,8 @@ def process_upload(config: dict, media_path: Path, person: str, category: str):
                 print(f"Waiting {mins} minutes before next post...")
                 time.sleep(mins * 60)
 
-    archive_dir = media_path.parent / "archive"
-    archive_dir.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(media_path), str(archive_dir / media_path.name))
-    print(f"\nArchived to {archive_dir}/")
+    media_path.unlink()
+    print(f"\nDeleted {media_path.name}")
 
 
 def worker(config: dict, post_queue: queue.Queue):
