@@ -1,3 +1,4 @@
+import base64
 import json
 import random
 import time
@@ -26,15 +27,20 @@ def get_media_file(folder: str) -> Path:
     return random.choice(files)
 
 
-def generate_title(category: str, model: str) -> str:
+def generate_title(category: str, model: str, image_path: Path) -> str:
     prompt = (
-        f"Generate a short, catchy Reddit post title for a {category} subreddit. "
-        "Make it natural and engaging. Return only the title, no quotes or explanation."
+        f"Look at this image and write a short, catchy Reddit post title for a {category} subreddit. "
+        "Make it natural, engaging, and relevant to what you see. "
+        "Return only the title, no quotes or explanation."
     )
+    payload = {"model": model, "prompt": prompt, "stream": False}
+    if image_path.suffix.lower() in {".jpg", ".jpeg", ".png", ".gif"}:
+        with open(image_path, "rb") as f:
+            payload["images"] = [base64.b64encode(f.read()).decode()]
     response = requests.post(
         "http://localhost:11434/api/generate",
-        json={"model": model, "prompt": prompt, "stream": False},
-        timeout=30,
+        json=payload,
+        timeout=60,
     )
     response.raise_for_status()
     return response.json()["response"].strip().strip('"')
@@ -142,7 +148,7 @@ def main():
     print(f"Media file: {media_path.name}")
 
     print("Generating title with Ollama...")
-    title = generate_title(subreddit["category"], config["ollama_model"])
+    title = generate_title(subreddit["category"], config["ollama_model"], media_path)
     print(f"Title: {title}")
 
     print("Posting to Reddit...")

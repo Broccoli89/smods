@@ -4,7 +4,7 @@
     "password": "YOUR_REDDIT_PASSWORD"
   },
   "drive_folder": "C:/Users/YourName/Google Drive/reddit_media",
-  "ollama_model": "llama3",
+  "ollama_model": "llava",
   "subreddits": [
     {"name": "aww", "category": "cute animals and pets"},
     {"name": "Pets", "category": "cute animals and pets"}
