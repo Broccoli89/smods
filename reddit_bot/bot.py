@@ -104,12 +104,15 @@ def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
         }""")
         print("Form elements found:", inputs)
 
-        # Fill title - Lexical editor requires execCommand to insert text
+        # Fill title - Lexical editor requires JS focus + execCommand
         print("Filling title...")
-        page.locator('[data-lexical-editor="true"]').scroll_into_view_if_needed()
-        page.locator('[data-lexical-editor="true"]').click(force=True)
-        time.sleep(1)
-        page.evaluate(f"document.execCommand('insertText', false, {json.dumps(title)})")
+        page.evaluate(f"""() => {{
+            const el = document.querySelector('[data-lexical-editor="true"]');
+            if (el) {{
+                el.focus();
+                document.execCommand('insertText', false, {json.dumps(title)});
+            }}
+        }}""")
         time.sleep(1)
         print("Title typed")
         time.sleep(2)
