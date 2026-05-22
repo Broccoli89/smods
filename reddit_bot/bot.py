@@ -1,5 +1,4 @@
 import json
-import os
 import random
 import time
 import requests
@@ -99,14 +98,13 @@ def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
         }""")
         print("Form elements found:", inputs)
 
-        # Fill title - Lexical editor div, must focus via JS then type
+        # Fill title - Lexical editor requires execCommand to insert text
         print("Filling title...")
-        page.evaluate("""() => {
-            const el = document.querySelector('[data-lexical-editor="true"]');
-            if (el) { el.scrollIntoView(); el.focus(); el.click(); }
-        }""")
+        page.locator('[data-lexical-editor="true"]').scroll_into_view_if_needed()
+        page.locator('[data-lexical-editor="true"]').click(force=True)
         time.sleep(1)
-        page.keyboard.type(title)
+        page.evaluate(f"document.execCommand('insertText', false, {json.dumps(title)})")
+        time.sleep(1)
         print("Title typed")
         time.sleep(2)
         page.screenshot(path="/tmp/step3_after_title.png")
