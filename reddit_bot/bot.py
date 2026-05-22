@@ -10,7 +10,7 @@ import requests
 from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
 from watchdog.events import FileSystemEventHandler
-from watchdog.observers import Observer
+from watchdog.observers.polling import PollingObserver as Observer
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".mp4", ".mov", ".webm"}
 
