@@ -1,3 +1,4 @@
 playwright
 requests
 playwright-stealth
+watchdog

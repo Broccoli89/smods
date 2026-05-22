@@ -1,11 +1,16 @@
 import base64
 import json
-import random
+import queue
+import shutil
+import threading
 import time
-import requests
 from pathlib import Path
+
+import requests
 from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".mp4", ".mov", ".webm"}
 
@@ -16,21 +21,10 @@ def load_config():
         return json.load(f)
 
 
-def get_media_file(folder: str) -> Path:
-    folder_path = Path(folder)
-    files = [
-        f for f in folder_path.rglob("*")
-        if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS
-    ]
-    if not files:
-        raise FileNotFoundError(f"No supported media files found in {folder}")
-    return random.choice(files)
-
-
-def generate_title(category: str, model: str, image_path: Path) -> str:
+def generate_title(image_path: Path, subreddit: dict, model: str) -> str:
     prompt = (
-        f"You are writing a Reddit post title for the {category} subreddit. "
-        "Look at this image and write a title that fits Reddit's casual, witty style. "
+        f"You are writing a Reddit post title for r/{subreddit['name']}, a {subreddit['theme']} subreddit. "
+        "Look at this image and write a title that fits Reddit's casual style for this community. "
         "Rules: no emojis, no hashtags, no Instagram-style captions, no ALL CAPS. "
         "Keep it under 15 words. Make it feel like something a real Reddit user would post. "
         "Return only the title, nothing else."
@@ -48,7 +42,7 @@ def generate_title(category: str, model: str, image_path: Path) -> str:
     return response.json()["response"].strip().strip('"')
 
 
-def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
+def post_to_reddit(config: dict, media_path: Path, title: str, subreddit_name: str):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
         context = browser.new_context(
@@ -58,107 +52,140 @@ def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
         page = context.new_page()
         Stealth().use_sync(page)
 
-        # Login
         page.goto("https://www.reddit.com/login")
         page.wait_for_load_state("domcontentloaded")
         time.sleep(3)
-        username_input = page.locator('input[name="username"], input[id="login-username"], input[placeholder*="Username"], input[autocomplete="username"]').first
-        username_input.fill(config["reddit"]["username"])
-        password_input = page.locator('input[name="password"], input[id="login-password"], input[type="password"]').first
-        password_input.fill(config["reddit"]["password"])
+        page.locator('input[name="username"], input[id="login-username"], input[autocomplete="username"]').first.fill(config["reddit"]["username"])
+        page.locator('input[name="password"], input[id="login-password"], input[type="password"]').first.fill(config["reddit"]["password"])
         page.locator('button[type="submit"], button:has-text("Log In"), button:has-text("Login")').first.click()
         time.sleep(5)
 
-        # Go to submit page
-        if config.get("profile_only"):
-            submit_url = f"https://www.reddit.com/user/{config['reddit']['username']}/submit?type=IMAGE"
-        else:
-            submit_url = f"https://www.reddit.com/r/{subreddit['name']}/submit?type=IMAGE"
-        page.goto(submit_url)
+        page.goto(f"https://www.reddit.com/r/{subreddit_name}/submit?type=IMAGE")
         page.wait_for_load_state("domcontentloaded")
         time.sleep(4)
-        page.screenshot(path="/tmp/step1_submit_page.png")
-        print("Screenshot saved: step1_submit_page.png")
 
-        # Upload file via file chooser
-        print("Attempting file upload...")
         try:
             with page.expect_file_chooser(timeout=8000) as fc_info:
                 page.click('button:has-text("Upload")', timeout=8000)
             fc_info.value.set_files(str(media_path))
-            print("File uploaded via chooser")
-        except Exception as e:
-            print(f"File chooser failed ({e}), trying direct input...")
-            file_input = page.locator('input[type="file"]').first
-            file_input.set_input_files(str(media_path))
-            print("File set via direct input")
+        except Exception:
+            page.locator('input[type="file"]').first.set_input_files(str(media_path))
         time.sleep(5)
-        page.screenshot(path="/tmp/step2_after_upload.png")
-        print("Screenshot saved: step2_after_upload.png")
 
-        # Dump all inputs for debugging
-        inputs = page.evaluate("""() => {
-            const els = document.querySelectorAll('input, textarea, [contenteditable]');
-            return Array.from(els).map(el => ({
-                tag: el.tagName,
-                placeholder: el.placeholder || '',
-                name: el.name || '',
-                id: el.id || '',
-                ariaLabel: el.getAttribute('aria-label') || '',
-                contenteditable: el.getAttribute('contenteditable') || ''
-            }));
-        }""")
-        print("Form elements found:", inputs)
-
-        # Fill title - click at visual coordinates of title field then type
-        print("Filling title...")
         page.mouse.click(608, 271)
         time.sleep(1)
         page.keyboard.type(title)
-        time.sleep(1)
-        print("Title typed")
         time.sleep(2)
-        page.screenshot(path="/tmp/step3_after_title.png")
-        print("Screenshot saved: step3_after_title.png")
 
-        # Submit
-        print("Clicking Post button...")
-        clicked = False
         for selector in ['button:has-text("Post")', 'button:has-text("Submit")', '[data-testid="post-submit-button"]']:
             try:
                 page.click(selector, timeout=5000)
-                clicked = True
-                print(f"Post clicked with selector: {selector}")
                 break
             except Exception:
                 continue
-        if not clicked:
-            print("WARNING: Could not click Post button")
-        time.sleep(config.get("post_delay_seconds", 5))
-        page.screenshot(path="/tmp/step4_after_submit.png")
-        print("Screenshot saved: step4_after_submit.png")
+        time.sleep(5)
 
-        current_url = page.url
+        url = page.url
         browser.close()
-        return current_url
+        return url
+
+
+def process_upload(config: dict, media_path: Path, person: str, category: str):
+    categories = config["categories"]
+    if category not in categories:
+        print(f"Unknown category '{category}' — skipping. Add it to config.json to enable.")
+        return
+
+    subreddits = categories[category]["subreddits"]
+    if not subreddits:
+        print(f"No subreddits configured for '{category}' — skipping.")
+        return
+
+    print(f"\n{'='*50}")
+    print(f"Processing: {person}/{category}/{media_path.name}")
+    print(f"Posting to {len(subreddits)} subreddits")
+    print(f"{'='*50}")
+
+    for i, subreddit in enumerate(subreddits):
+        print(f"\n[{i+1}/{len(subreddits)}] Generating title for r/{subreddit['name']}...")
+        try:
+            title = generate_title(media_path, subreddit, config["ollama_model"])
+            print(f"Title: {title}")
+            url = post_to_reddit(config, media_path, title, subreddit["name"])
+            print(f"Posted: {url}")
+        except Exception as e:
+            print(f"Failed to post to r/{subreddit['name']}: {e}")
+
+        if i < len(subreddits) - 1:
+            mins = config.get("post_delay_minutes", 10)
+            print(f"Waiting {mins} minutes before next post...")
+            time.sleep(mins * 60)
+
+    archive_dir = media_path.parent.parent / f"{category}_archive"
+    archive_dir.mkdir(exist_ok=True)
+    shutil.move(str(media_path), str(archive_dir / media_path.name))
+    print(f"\nArchived to {category}_archive/")
+
+
+class UploadHandler(FileSystemEventHandler):
+    def __init__(self, config: dict, post_queue: queue.Queue):
+        self.config = config
+        self.post_queue = post_queue
+        self.drive_folder = Path(config["drive_folder"])
+
+    def on_created(self, event):
+        if event.is_directory:
+            return
+        path = Path(event.src_path)
+        if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            return
+        if "_archive" in str(path):
+            return
+        try:
+            parts = path.relative_to(self.drive_folder).parts
+            if len(parts) < 3:
+                return
+            person, category = parts[0], parts[1]
+        except ValueError:
+            return
+
+        print(f"\nNew file detected: {path.name} ({person}/{category})")
+        time.sleep(3)  # Wait for file to finish copying before reading
+        self.post_queue.put((path, person, category))
+
+
+def worker(config: dict, post_queue: queue.Queue):
+    while True:
+        media_path, person, category = post_queue.get()
+        try:
+            process_upload(config, media_path, person, category)
+        except Exception as e:
+            print(f"Error processing {media_path.name}: {e}")
+        post_queue.task_done()
 
 
 def main():
     config = load_config()
+    drive_folder = Path(config["drive_folder"])
 
-    subreddit = random.choice(config["subreddits"])
-    print(f"Target subreddit: r/{subreddit['name']} ({subreddit['category']})")
+    post_queue = queue.Queue()
+    threading.Thread(target=worker, args=(config, post_queue), daemon=True).start()
 
-    media_path = get_media_file(config["drive_folder"])
-    print(f"Media file: {media_path.name}")
+    handler = UploadHandler(config, post_queue)
+    observer = Observer()
+    observer.schedule(handler, str(drive_folder), recursive=True)
+    observer.start()
 
-    print("Generating title with Ollama...")
-    title = generate_title(subreddit["category"], config["ollama_model"], media_path)
-    print(f"Title: {title}")
+    print(f"Bot is running. Watching: {drive_folder}")
+    print("Drop images into person/category folders to trigger posting.")
+    print("Press Ctrl+C to stop.\n")
 
-    print("Posting to Reddit...")
-    url = post_to_reddit(config, subreddit, media_path, title)
-    print(f"Done! Post URL: {url}")
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
 
 
 if __name__ == "__main__":

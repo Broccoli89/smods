@@ -3,12 +3,36 @@
     "username": "YOUR_REDDIT_USERNAME",
     "password": "YOUR_REDDIT_PASSWORD"
   },
-  "drive_folder": "C:/Users/YourName/Google Drive/reddit_media",
+  "drive_folder": "/home/broccoli/GoogleDrive/Reddit Bot",
   "ollama_model": "llava",
-  "profile_only": true,
-  "subreddits": [
-    {"name": "aww", "category": "cute animals and pets"},
-    {"name": "Pets", "category": "cute animals and pets"}
-  ],
-  "post_delay_seconds": 5
+  "post_delay_minutes": 10,
+  "categories": {
+    "mommy": {
+      "subreddits": []
+    },
+    "femdom": {
+      "subreddits": []
+    },
+    "boobs": {
+      "subreddits": []
+    },
+    "ass": {
+      "subreddits": []
+    },
+    "feet": {
+      "subreddits": []
+    },
+    "heels": {
+      "subreddits": []
+    },
+    "legs": {
+      "subreddits": []
+    },
+    "lingerie": {
+      "subreddits": []
+    },
+    "underwear": {
+      "subreddits": []
+    }
+  }
 }
