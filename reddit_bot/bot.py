@@ -1,4 +1,5 @@
 import base64
+import io
 import json
 import queue
 import shutil
@@ -7,6 +8,7 @@ import time
 from pathlib import Path
 
 import requests
+from PIL import Image
 from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
 
@@ -31,8 +33,10 @@ def generate_title(image_path: Path, subreddit: dict, model: str) -> str:
     )
     payload = {"model": model, "prompt": prompt, "stream": False}
     if image_path.suffix.lower() in IMAGE_EXTENSIONS:
-        with open(image_path, "rb") as f:
-            payload["images"] = [base64.b64encode(f.read()).decode()]
+        img = Image.open(image_path).convert("RGB")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        payload["images"] = [base64.b64encode(buf.getvalue()).decode()]
     response = requests.post(
         "http://localhost:11434/api/generate",
         json=payload,
