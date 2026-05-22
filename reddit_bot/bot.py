@@ -88,7 +88,7 @@ def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
         # Fill title
         print("Filling title...")
         filled = False
-        for selector in ['textarea[placeholder*="Title"]', 'input[placeholder*="Title"]', '[data-testid="post-title-input"]', 'textarea', 'input[name="title"]']:
+        for selector in ['[placeholder="Title*"]', 'textarea[placeholder*="Title"]', 'input[placeholder*="Title"]', '[aria-label="Title"]', 'div[contenteditable="true"]', '[data-testid="post-title-input"]']:
             try:
                 page.fill(selector, title, timeout=3000)
                 filled = True
