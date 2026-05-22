@@ -85,6 +85,20 @@ def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
         page.screenshot(path="/tmp/step2_after_upload.png")
         print("Screenshot saved: step2_after_upload.png")
 
+        # Dump all inputs for debugging
+        inputs = page.evaluate("""() => {
+            const els = document.querySelectorAll('input, textarea, [contenteditable]');
+            return Array.from(els).map(el => ({
+                tag: el.tagName,
+                placeholder: el.placeholder || '',
+                name: el.name || '',
+                id: el.id || '',
+                ariaLabel: el.getAttribute('aria-label') || '',
+                contenteditable: el.getAttribute('contenteditable') || ''
+            }));
+        }""")
+        print("Form elements found:", inputs)
+
         # Fill title
         print("Filling title...")
         filled = False
