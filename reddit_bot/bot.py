@@ -55,12 +55,12 @@ def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
         password_input = page.locator('input[name="password"], input[id="login-password"], input[type="password"]').first
         password_input.fill(config["reddit"]["password"])
         page.locator('button[type="submit"], button:has-text("Log In"), button:has-text("Login")').first.click()
-        page.wait_for_load_state("networkidle")
-        time.sleep(3)
+        page.wait_for_url("https://www.reddit.com/", timeout=15000)
+        time.sleep(2)
 
         # Go to submit page
         page.goto(f"https://www.reddit.com/r/{subreddit['name']}/submit")
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("domcontentloaded")
         time.sleep(3)
 
         # Click image/video tab
@@ -103,7 +103,7 @@ def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
                 break
             except Exception:
                 continue
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("domcontentloaded")
         time.sleep(config.get("post_delay_seconds", 5))
 
         current_url = page.url
