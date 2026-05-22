@@ -49,10 +49,12 @@ def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
         # Login
         page.goto("https://www.reddit.com/login")
         page.wait_for_load_state("domcontentloaded")
-        time.sleep(2)
-        page.fill('input[id="login-username"]', config["reddit"]["username"])
-        page.fill('input[id="login-password"]', config["reddit"]["password"])
-        page.get_by_role("button", name="Log In").click()
+        time.sleep(3)
+        username_input = page.locator('input[name="username"], input[id="login-username"], input[placeholder*="Username"], input[autocomplete="username"]').first
+        username_input.fill(config["reddit"]["username"])
+        password_input = page.locator('input[name="password"], input[id="login-password"], input[type="password"]').first
+        password_input.fill(config["reddit"]["password"])
+        page.locator('button[type="submit"], button:has-text("Log In"), button:has-text("Login")').first.click()
         page.wait_for_load_state("networkidle")
         time.sleep(3)
 
