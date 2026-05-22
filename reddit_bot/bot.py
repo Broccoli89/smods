@@ -99,9 +99,13 @@ def post_to_reddit(config: dict, subreddit: dict, media_path: Path, title: str):
         }""")
         print("Form elements found:", inputs)
 
-        # Fill title - it's a contenteditable div, must click then type
+        # Fill title - Lexical editor div, must focus via JS then type
         print("Filling title...")
-        page.click('div[contenteditable="true"]', timeout=5000)
+        page.evaluate("""() => {
+            const el = document.querySelector('[data-lexical-editor="true"]');
+            if (el) { el.scrollIntoView(); el.focus(); el.click(); }
+        }""")
+        time.sleep(1)
         page.keyboard.type(title)
         print("Title typed")
         time.sleep(2)
